@@ -1,0 +1,124 @@
+import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+
+from sklearn.utils import resample
+file_path = '/content/drive/MyDrive/CSM C OR CEP 11/waste_sensor_data.csv' 
+dataset = pd.read_csv(file_path)
+
+dataset.head()
+dataset.tail()
+dataset.describe()
+dataset.isnull()
+dataset.isnull().sum()
+
+pip install pandas seaborn matplotlib
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+dataset.hist(figsize=(10, 8))
+plt.tight_layout()
+plt.show()
+sns.pairplot(dataset)
+plt.show()
+
+dataset['timestamp'] = pd.to_datetime(dataset['timestamp'])  
+numeric_dataset = dataset.select_dtypes(include=['float64', 'int64'])
+corr_matrix = numeric_dataset.corr()
+
+plt.figure(figsize=(12, 8))
+sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', fmt='.2f', cbar=True)
+plt.title('Correlation Matrix')
+plt.show
+
+dataset['is_organic'] = dataset['waste_type'].apply(lambda x: 1 if x == 'organic' else 0)
+dataset_cleaned = dataset.drop(columns=['sensor_id', 'timestamp', 'waste_type'])
+dataset.head()
+
+numeric_columns = ['inductive_property', 'capacitive_property', 'moisture_property', 'infrared_property']
+dataset[numeric_columns].hist(figsize=(12, 8), bins=20)
+plt.tight_layout()
+plt.show()
+
+plt.figure(figsize=(8, 6))
+sns.scatterplot(data=dataset, x='inductive_property', y='infrared_property', hue='waste_type')
+plt.title('Scatter plot: Inductive Property vs Infrared Property')
+plt.xlabel('Inductive Property')
+plt.ylabel('Infrared Property')
+plt.show()
+
+plt.figure(figsize=(8, 6))
+sns.countplot(data=dataset, x='is_organic', palette='Set1')
+plt.title('Organic vs Non-Organic Waste')
+plt.xlabel('Is Organic')
+plt.ylabel('Count')
+plt.show
+
+X = dataset_cleaned.drop(columns=['is_organic'])
+y = dataset_cleaned['is_organic']
+data = pd.concat([X, y], axis=1)
+
+
+majority = data[data['is_organic'] == 0]
+minority = data[data['is_organic'] == 1]
+minority_oversampled = resample(minority,
+                                replace=True,  # Sample with replacement
+                                n_samples=len(majority),  # Match majority class size
+                                random_state=42)
+
+data_balanced = pd.concat([majority, minority_oversampled])
+data_balanced = data_balanced.sample(frac=1, random_state=42).reset_index(drop=True)
+X_balanced = data_balanced.drop(columns=['is_organic'])
+y_balanced = data_balanced['is_organic']
+
+X_train, X_test, y_train, y_test = train_test_split(X_balanced, y_balanced, test_size=0.2, random_state=42, stratify=y_balanced)
+
+
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+# Step 6: Train a Random Forest Classifier
+rf_model = RandomForestClassifier(random_state=42, n_estimators=150, max_depth=10, min_samples_split=5)
+rf_model.fit(X_train_scaled, y_train)
+# Step 7: Evaluate the model
+y_pred = rf_model.predict(X_test_scaled)
+accuracy = accuracy_score(y_test, y_pred)
+report = classification_report(y_test, y_pred)
+
+print("Accuracy:", accuracy)
+print("\nClassification Report:\n", report)
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import accuracy_score, classification_report
+# Define the parameter grid
+param_grid = {
+    'n_estimators': [100, 150, 200],
+    'max_depth': [10, 15, 20],
+    'min_samples_split': [2, 5, 10],
+    'min_samples_leaf': [1, 2, 4]
+}
+
+grid_search = GridSearchCV(
+    estimator=RandomForestClassifier(random_state=42),
+    param_grid=param_grid,
+    cv=3,  # 3-fold cross-validation
+    scoring='accuracy',
+    verbose=1,  # Set to 1 to see progress
+    n_jobs=-1   # Use all available processors
+)
+
+grid_search.fit(X_train_scaled, y_train)
+# Retrieve the best model
+best_model = grid_search.best_estimator_
+
+y_pred = best_model.predict(X_test_scaled)
+accuracy = accuracy_score(y_test, y_pred)
+report = classification_report(y_test, y_pred)
+
+print("Best Hyperparameters:", grid_search.best_params_)
+print("Accuracy:", accuracy)
+print("\nClassification Report:\n", report)
+print(accuracy*100) 
